@@ -1,0 +1,96 @@
+templates:
+- id: stack
+  run:
+  - api
+  - couchbase
+  - init-couchbase
+  - kong
+  - frontend
+
+modules:
+  - id: kong
+    module: polytope/kong!simple
+    args:
+      port: 3000
+      config-file: { type: host, path: ./conf/components/kong/dev.yml }
+      autoreload: true
+      services:
+      - { id: kong, ports: [{ port: 3000, protocol: http }]}
+
+  - id: api
+    module: polytope/python
+    args:
+      id: backend
+      image: public.ecr.aws/docker/library/python:3.13-slim-bookworm
+      code: { type: host, path: api }
+      cmd: ./bin/run
+      restart:
+        policy: always
+      services:
+        - { id: "api", ports: [{protocol: http, port: 8080, expose-as: 3001}] }
+      env:
+        - { name: API_PORT, value: 8080 }
+        - { name: PUBLIC_URL, value: "http://localhost:3000" }
+        - { name: LOG_LEVEL, value: INFO }
+        - { name: OPPER_API_KEY, value: "#pt-secret opper-api-key" }
+        - { name: COUCHBASE_CONNECTION_STRING, value: "couchbase://couchbase" }
+        - { name: COUCHBASE_USERNAME, value: "user" }
+        - { name: COUCHBASE_PASSWORD, value: "password" }
+        - { name: COUCHBASE_BUCKET, value: "main" }
+      mounts:
+        - { path: /root/.cache/, source: { type: volume, scope: project, id: dependency-cache } }
+        - { path: /root/conf/, source: { type: host, path: ./conf } }
+
+  - id: frontend
+    module: polytope/node
+    args:
+      id: frontend
+      image: node:21-bullseye-slim
+      code: { type: host, path: ./frontend }
+      cmd: ./bin/run
+      env:
+        - { name: PORT, value: 8080 }
+        - { name: HOST, value: 0.0.0.0 }
+        - { name: REACT_APP_API_BASE_URL, value: "http://localhost:3000" }
+        - { name: PUBLIC_URL, value: "http://localhost:3000" }
+      restart:
+        policy: always
+      services:
+        - id: frontend
+          ports: [{protocol: http, port: 8080, expose-as: 8080}]
+      mounts:
+        - { path: /root/.cache/, source: { type: volume, scope: project, id: dependency-cache }}
+        - { path: /root/.npm/, source: { type: volume, scope: project, id: npm-cache }}
+        - { path: /app/node_modules/, source: { type: volume, scope: project, id: npm-modules }}
+
+  - id: init-couchbase
+    params:
+    - { id: couchbase-host, type: [default, str, 'couchbase'] }
+    - { id: couchbase-username, type: [default, str, 'user'] }
+    - { id: couchbase-password, type: [default, str, 'password'] }
+    - { id: couchbase-tls, type: [default, str, 'false'] }
+    - { id: couchbase-main-bucket-name, type: [default, str, 'main'] }
+    - { id: couchbase-type, type: [default, str, 'server'] }
+    module: polytope/python
+    args:
+      image: gcr.io/arched-inkwell-420116/python:3.11.8-slim-bookworm
+      container-id: couchbase-init-python
+      code: { type: host, path: ./cillers/couchbase-init-python }
+      cmd: ./bin/run
+      restart: { policy: on-failure }
+      env:
+        - { name: COUCHBASE_HOST, value: "#pt-param couchbase-host" }
+        - { name: COUCHBASE_TLS, value: "#pt-param couchbase-tls" }
+        - { name: COUCHBASE_USERNAME, value: "#pt-param couchbase-username" }
+        - { name: COUCHBASE_PASSWORD, value: "#pt-param couchbase-password" }
+        - { name: COUCHBASE_MAIN_BUCKET_NAME, value: "#pt-param couchbase-main-bucket-name" }
+        - { name: COUCHBASE_TYPE, value: "#pt-param couchbase-type" }
+      mounts:
+        - { path: /root/.cache/, source: { type: volume, scope: project, id: dependency-cache }}
+        - { path: /root/conf/, source: { type: host, path: ./conf/components/couchbase }}
+
+  - id: couchbase
+    module: polytope/couchbase
+    args:
+      image: gcr.io/arched-inkwell-420116/couchbase:enterprise-7.6.1
+      data-volume: { type: volume, scope: project, id: couchbase-data }
