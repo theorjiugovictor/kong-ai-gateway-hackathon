@@ -22,7 +22,12 @@ async def lifespan(app: FastAPI):
         bucket_name=cb_conf.bucket,
         scope=cb_conf.scope
     )
-    app.state.db.connect()
+    try:
+        app.state.db.connect()
+    except Exception as e:
+        logger.warning(
+            f"Coudn't connect to Couchbase - deferring until next request: {str(e)}"
+        )
     app.state.opper = Opper(api_key=conf.get_opper_api_key())
 
     yield
