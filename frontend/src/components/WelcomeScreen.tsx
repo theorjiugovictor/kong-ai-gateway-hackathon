@@ -15,10 +15,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onChatCreated }) => {
   const chatApi = useMemo(() => createChatApi(apiClient), [apiClient]);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, messageOverride?: string) => {
     e.preventDefault();
 
-    if (!input.trim()) return;
+    const message = messageOverride || input;
+    if (!message.trim()) return;
 
     setIsLoading(true);
 
@@ -27,18 +28,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onChatCreated }) => {
       const chat = await chatApi.createChat();
 
       // Store in session storage
-      addChatFromApi(chat, input);
+      addChatFromApi(chat, message);
       setActiveChat(chat.id);
 
       // Store the message in session storage before navigating
-      setPendingMessage(input);
+      setPendingMessage(message);
 
       // Navigate to the new chat (no need for query parameter now)
       navigate(`/chat/${chat.id}`);
       onChatCreated(chat.id);
 
       // Send the initial message
-      chatApi.sendMessage(chat.id, input).catch(() => {
+      chatApi.sendMessage(chat.id, message).catch(() => {
       });
     } catch (error) {
       alert('Failed to create chat. Please try again.');
@@ -58,12 +59,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onChatCreated }) => {
     "Why is there steam coming out of the side vents?",
   ];
 
-  const startWithSampleQuestion = async (question: string) => {
+  const startWithSampleQuestion = (question: string) => {
     setInput(question);
 
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    handleSubmit(new Event('submit') as any);
+    // Create a synthetic form event and pass the question directly
+    const event = new Event('submit') as any;
+    handleSubmit(event, question);
   };
 
   return (
