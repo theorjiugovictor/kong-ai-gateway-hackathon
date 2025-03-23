@@ -2,10 +2,6 @@ import config from '../config';
 import { ApiClientInterface } from './types';
 
 export class ApiClientRest implements ApiClientInterface {
-    // Simplified API client without module loading
-    constructor() {
-        // No need to load modules, they're accessed directly
-    }
 
     private async request<T>(
         method: string,

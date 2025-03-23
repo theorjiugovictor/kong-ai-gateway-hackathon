@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStoredChats, removeStoredChat, StoredChatSession, setActiveChat } from '../services/chatStorage';
+import { getStoredChats, removeStoredChat, StoredChatSession } from '../services/chatStorage';
 
 interface ChatSidebarProps {
   activeChatId?: string | null;
@@ -48,10 +48,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ activeChatId, onSelectChat, o
     }
   };
 
-  const handleChatSelect = (chatId: string) => {
-    setActiveChat(chatId);
-    onSelectChat(chatId);
-  };
 
   return (
     <div className="h-full flex flex-col bg-base-200 w-64 min-w-64 border-r">
