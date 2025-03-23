@@ -1,5 +1,5 @@
 import contextlib
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 import os
 import re
@@ -63,7 +63,7 @@ class Formatter(logging.Formatter):
     """Pretty-printing log formatter."""
     def format(self, record):
         ts = (datetime
-              .utcfromtimestamp(record.created)
+              .fromtimestamp(record.created, UTC)
               .strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z')
         level = LEVEL_LABELS.get(record.levelname, record.levelname)
         n = record.name

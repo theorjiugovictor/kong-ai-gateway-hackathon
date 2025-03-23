@@ -1,7 +1,6 @@
-import os
-from fastapi import APIRouter, Path, Depends, HTTPException
+from fastapi import APIRouter, Path, Depends, HTTPException, Request
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any, Literal
+from typing import Annotated, Any, Literal
 
 from opperai import Opper, trace
 from .clients.couchbase import CouchbaseChatClient
@@ -11,7 +10,6 @@ logger = log.get_logger(__name__)
 
 router = APIRouter()
 
-opper = Opper(api_key=os.getenv("OPPER_API_KEY"))
 
 # Sample knowledge base
 knowledge_base = [
@@ -103,14 +101,16 @@ knowledge_base = [
 ]
 
 
-# Initialize Couchbase client
-def get_db():
-    db = CouchbaseChatClient()
-    try:
-        db.connect()
-        yield db
-    finally:
-        db.close()
+def get_db_handle(request: Request) -> CouchbaseChatClient:
+    """Util for getting the Couchbase client from the request state."""
+    return request.app.state.db
+
+def get_opper_handle(request: Request) -> Opper:
+    """Util for getting the Opper client from the request state."""
+    return request.app.state.opper
+
+DbHandle = Annotated[CouchbaseChatClient, Depends(get_db_handle)]
+OpperHandle = Annotated[Opper, Depends(get_opper_handle)]
 
 #### Models ####
 
@@ -120,26 +120,26 @@ class MessageResponse(BaseModel):
 
 ## Chat Session ##
 class CreateChatRequest(BaseModel):
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 class ChatSession(BaseModel):
     id: str
     created_at: str
     updated_at: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 ## Messages ##
 class Message(BaseModel):
-    id: Optional[int] = None
-    chat_id: Optional[str] = None
+    id: int | None = None
+    chat_id: str | None = None
     role: str
     content: str
-    created_at: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    created_at: str | None = None
+    metadata: dict[str, Any] | None = None
 
 class ChatMessageRequest(BaseModel):
     content: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 class ChatMessageResponse(BaseModel):
     message: Message
@@ -147,7 +147,7 @@ class ChatMessageResponse(BaseModel):
 
 class ChatHistory(BaseModel):
     chat_id: str
-    messages: List[Message]
+    messages: list[Message]
 
 ## Knowledge Base ##
 class KnowledgeItem(BaseModel):
@@ -155,11 +155,11 @@ class KnowledgeItem(BaseModel):
     title: str
     content: str
     category: str
-    relevance_score: Optional[float] = None
-    tags: Optional[List[str]] = None
+    relevance_score: float | None = None
+    tags: list[str] | None = None
 
 class KnowledgeSearchResponse(BaseModel):
-    items: List[KnowledgeItem]
+    items: list[KnowledgeItem]
 
 ## Intent Classification ##
 class IntentClassification(BaseModel):
@@ -168,12 +168,12 @@ class IntentClassification(BaseModel):
 
 class KnowledgeResult(BaseModel):
     thoughts: str
-    relevant_items: List[Dict[str, Any]]
+    relevant_items: list[dict[str, Any]]
 
 #### Helper Functions ####
 
 @trace
-def determine_intent(messages):
+def determine_intent(opper: Opper, messages):
     """Determine the intent of the user's message."""
     intent, _ = opper.call(
         name="determine_intent",
@@ -231,13 +231,16 @@ def search_knowledge_base(intent, query):
     return results[:5]  # Return top 5 results
 
 @trace
-def process_message(messages):
+def process_message(opper: Opper, messages):
     """Process a user message and return relevant information."""
     # Extract the last user message
-    user_message = next((msg["content"] for msg in reversed(messages) if msg["role"] == "user"), "")
+    user_message = next(
+        (msg["content"] for msg in reversed(messages) if msg["role"] == "user"),
+        ""
+    )
 
     # Determine the intent
-    intent = determine_intent(messages)
+    intent = determine_intent(opper, messages)
 
     # Search knowledge base for relevant information
     kb_results = search_knowledge_base(intent, user_message)
@@ -262,7 +265,7 @@ def process_message(messages):
         }
 
 @trace
-def bake_response(messages, analysis=None):
+def bake_response(opper: Opper, messages, analysis=None):
     """Generate a response using Opper."""
     # Create a copy of messages for the AI
     ai_messages = messages.copy()
@@ -307,8 +310,8 @@ async def hello() -> MessageResponse:
 
 @router.post("/chats", response_model=ChatSession)
 async def create_chat(
+    db: DbHandle,
     request: CreateChatRequest = None,
-    db: CouchbaseChatClient = Depends(get_db)
 ) -> ChatSession:
     """Create a new chat session."""
     request = request or CreateChatRequest()
@@ -328,8 +331,8 @@ async def create_chat(
 
 @router.get("/chats/{chat_id}", response_model=ChatSession)
 async def get_chat(
+    db: DbHandle,
     chat_id: str = Path(..., description="The UUID of the chat session"),
-    db: CouchbaseChatClient = Depends(get_db)
 ) -> ChatSession:
     """Get a chat session by ID."""
     chat = db.get_chat(chat_id)
@@ -345,8 +348,8 @@ async def get_chat(
 
 @router.get("/chats/{chat_id}/messages", response_model=ChatHistory)
 async def get_chat_messages(
-    chat_id: str = Path(..., description="The UUID of the chat session"),
-    db: CouchbaseChatClient = Depends(get_db)
+    db: DbHandle,
+    chat_id: str = Path(..., description="The UUID of the chat session")
 ) -> ChatHistory:
     """Get all messages for a chat session."""
     chat = db.get_chat(chat_id)
@@ -374,12 +377,12 @@ async def get_chat_messages(
 @router.post("/chats/{chat_id}/messages", response_model=ChatMessageResponse)
 async def add_chat_message(
     request: ChatMessageRequest,
+    db: DbHandle,
+    opper: OpperHandle,
     chat_id: str = Path(..., description="The UUID of the chat session"),
-    db: CouchbaseChatClient = Depends(get_db)
 ) -> ChatMessageResponse:
     """Add a message to a chat session and get a response."""
     # Check if chat exists
-    logger.info(f"RECEIVED MSG {chat_id} {request}")
     chat = db.get_chat(chat_id)
     if not chat:
         raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found")
@@ -404,8 +407,8 @@ async def add_chat_message(
 
     # Process the message with intent detection and knowledge base lookup
     with opper.traces.start("customer_support_chat"):
-        analysis = process_message(formatted_messages)
-        assistant_response = bake_response(formatted_messages, analysis)
+        analysis = process_message(opper, formatted_messages)
+        assistant_response = bake_response(opper, formatted_messages, analysis)
 
     # Add assistant response to database
     assistant_message_id = db.add_message(chat_id, "assistant", assistant_response)
@@ -436,8 +439,8 @@ async def add_chat_message(
 
 @router.delete("/chats/{chat_id}", response_model=MessageResponse)
 async def delete_chat(
+    db: DbHandle,
     chat_id: str = Path(..., description="The UUID of the chat session"),
-    db: CouchbaseChatClient = Depends(get_db)
 ) -> MessageResponse:
     """Delete a chat session and all its messages."""
     chat = db.get_chat(chat_id)
