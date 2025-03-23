@@ -24,16 +24,16 @@ modules:
         info: Whether to run in dev mode (with hot reload, debugging).
         type: [default, bool, true]
     args:
-      id: backend
+      id: api
       image: public.ecr.aws/docker/library/python:3.13-slim-bookworm
       code: { type: host, path: api }
       cmd: ./bin/run
       restart:
         policy: always
       services:
-        - { id: api, ports: [{protocol: http, port: 8080, expose-as: 3001}] }
+        - { id: api, ports: [{protocol: http, port: 3001, expose-as: 3001}] }
       env:
-        - { name: HTTP_PORT, value: 8080 }
+        - { name: HTTP_PORT, value: 3001 }
         - { name: LOG_LEVEL, value: INFO }
         - { name: HTTP_DEBUG, value: "#pt-param dev-mode" }
         - { name: HTTP_AUTORELOAD, value: "#pt-param dev-mode" }
@@ -54,7 +54,7 @@ modules:
       code: { type: host, path: ./frontend }
       cmd: ./bin/run
       env:
-        - { name: PORT, value: 8080 }
+        - { name: PORT, value: 3002 }
         - { name: HOST, value: 0.0.0.0 }
         - { name: REACT_APP_API_BASE_URL, value: "http://localhost:3000" }
         - { name: PUBLIC_URL, value: "http://localhost:3000" }
@@ -62,7 +62,7 @@ modules:
         policy: always
       services:
         - id: frontend
-          ports: [{protocol: http, port: 8080, expose-as: 8080}]
+          ports: [{protocol: http, port: 3002, expose-as: 3002}]
       mounts:
         - { path: /root/.cache/, source: { type: volume, scope: project, id: dependency-cache }}
         - { path: /root/.npm/, source: { type: volume, scope: project, id: npm-cache }}
