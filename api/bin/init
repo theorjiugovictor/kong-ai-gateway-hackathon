@@ -13,7 +13,7 @@ VIRTUAL_ENV="$HOME/.cache/venvs/api"
 if ! command -v uv &> /dev/null; then
   PYTHON_CMD="$(command -v python3 || command -v python)"
   echo "Installing uv..."
-  $PYTHON_CMD -m pip install uv
+  $PYTHON_CMD -m pip install -q --disable-pip-version-check --root-user-action=ignore uv
 fi
 
 uv sync
