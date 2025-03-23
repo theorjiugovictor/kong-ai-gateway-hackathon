@@ -31,7 +31,7 @@ const Main: React.FC = () => {
             POLYTOPE
           </a>
           <span className="text-sm">and</span>
-          <a style="color: #fff" href="https://www.opper.ai/" className="text-sm font-medium hover:underline">Opper</a>
+          <a style={{ color: "#fff" }} href="https://www.opper.ai/" className="text-sm font-medium hover:underline">Opper</a>
         </div>
       </footer>
     </main>
