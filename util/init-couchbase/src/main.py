@@ -4,18 +4,21 @@ from controllers.controller_cluster import ControllerCluster
 from controllers.controller_bucket import ControllerBucket
 from controllers.controller_data_structure import ControllerDataStructure
 
-def get_env_var(name):
+def get_env_var(name, default=None):
     try:
-        return os.environ[name]
+        if default:
+            return os.environ.get(name, default)
+        else:
+            return os.environ[name]
     except KeyError:
         raise KeyError(f"Environment variable '{name}' is not set")
 
 COUCHBASE_USERNAME = get_env_var('COUCHBASE_USERNAME')
 COUCHBASE_PASSWORD = get_env_var('COUCHBASE_PASSWORD')
 COUCHBASE_HOST = get_env_var('COUCHBASE_HOST')
-COUCHBASE_TLS = get_env_var('COUCHBASE_TLS').lower() == 'true'
+COUCHBASE_TLS = get_env_var('COUCHBASE_TLS', 'false').lower() == 'true'
 COUCHBASE_MAIN_BUCKET_NAME = get_env_var('COUCHBASE_MAIN_BUCKET_NAME')
-COUCHBASE_TYPE = get_env_var('COUCHBASE_TYPE')
+COUCHBASE_TYPE = get_env_var('COUCHBASE_TYPE', 'server')
 
 data_structure_spec = {"_default": ["chats", "chat_messages"]}
 

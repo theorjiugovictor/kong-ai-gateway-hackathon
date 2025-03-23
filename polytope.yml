@@ -73,8 +73,8 @@ modules:
     module: polytope/python
     args:
       image: gcr.io/arched-inkwell-420116/python:3.11.8-slim-bookworm
-      container-id: couchbase-init-python
-      code: { type: host, path: ./cillers/couchbase-init-python }
+      id: init-couchbase
+      code: { type: host, path: ./util/init-couchbase }
       cmd: ./bin/run
       restart: { policy: on-failure }
       env:
