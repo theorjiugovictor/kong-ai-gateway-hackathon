@@ -10,6 +10,12 @@ This project serves as a starting point for building an AI-powered customer supp
 - Knowledge base browsing and searching
 - Advanced Opper AI integration with structured output and conversation management
 
+## Known issues
+
+- The bot is very unhelpful!
+- The knowledge base is very limited and not very useful.
+- The bot hallucinates a lot! If it can't find the answer in the knowledge base, it just makes stuff up.
+
 ## Prerequisites
 
 To get started, make sure you install Polytope:
