@@ -16,4 +16,4 @@ if ! command -v uv &> /dev/null; then
   $PYTHON_CMD -m pip install -q --disable-pip-version-check --root-user-action=ignore uv
 fi
 
-uv sync
+uv sync --no-progress
