@@ -50,7 +50,7 @@ modules:
     module: polytope/node
     args:
       id: frontend
-      image: node:21-bullseye-slim
+      image: node:22-bullseye-slim
       code: { type: host, path: ./frontend }
       cmd: ./bin/run
       env:
