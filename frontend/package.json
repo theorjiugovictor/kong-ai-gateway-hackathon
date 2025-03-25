@@ -43,11 +43,6 @@
       "last 1 safari version"
     ]
   },
-  "peerDependenciesMeta": {
-    "@testing-library/dom": { "optional": true },
-    "@babel/core": { "optional": true },
-    "@babel/plugin-syntax-flow": { "optional": true }
-  },
   "devDependencies": {
     "@babel/plugin-transform-private-property-in-object": "^7.25.9",
     "@babel/plugin-transform-react-jsx": "^7.25.9",
