@@ -15,7 +15,9 @@ modules:
       config-file: { type: host, path: ./conf/components/kong/dev.yml }
       autoreload: true
       services:
-      - { id: kong, ports: [{ port: 3000, protocol: http }]}
+        - { id: kong, ports: [{ port: 3000, protocol: http }]}
+      env:
+        - { name: KONG_LOG_LEVEL, value: warn }
 
   - id: api
     module: polytope/python
