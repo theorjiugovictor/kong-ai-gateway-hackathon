@@ -390,13 +390,12 @@ async def add_chat_message(
     if not request or not request.content.strip():
         raise HTTPException(status_code=400, detail="Message content cannot be empty")
 
-    # Add user message to database
-    user_message_id = db.add_message(chat_id, "user", request.content, request.metadata)
+    (query_id, query_ts) = db.add_message(
+        chat_id, "user", request.content, request.metadata
+    )
 
-    # Retrieve all messages for context
     db_messages = db.get_messages(chat_id)
 
-    # Convert to format expected by Opper
     formatted_messages = [
         {
             "role": msg["role"],
@@ -408,32 +407,27 @@ async def add_chat_message(
     # Process the message with intent detection and knowledge base lookup
     with opper.traces.start("customer_support_chat"):
         analysis = process_message(opper, formatted_messages)
-        assistant_response = bake_response(opper, formatted_messages, analysis)
+        response = bake_response(opper, formatted_messages, analysis)
 
     # Add assistant response to database
-    assistant_message_id = db.add_message(chat_id, "assistant", assistant_response)
-
-    # Get both messages with full details
-    all_messages = db.get_messages(chat_id)
-    user_message = next((msg for msg in all_messages if msg["id"] == user_message_id), None)
-    assistant_message = next((msg for msg in all_messages if msg["id"] == assistant_message_id), None)
+    (response_id, response_ts) = db.add_message(chat_id, "assistant", response)
 
     return ChatMessageResponse(
         message=Message(
-            id=user_message["id"],
+            id=query_id,
             chat_id=chat_id,
-            role=user_message["role"],
-            content=user_message["content"],
-            created_at=str(user_message["created_at"]),
-            metadata=user_message["metadata"]
+            role='user',
+            content=request.content,
+            created_at=query_ts,
+            metadata=request.metadata
         ),
         response=Message(
-            id=assistant_message["id"],
+            id=response_id,
             chat_id=chat_id,
-            role=assistant_message["role"],
-            content=assistant_message["content"],
-            created_at=str(assistant_message["created_at"]),
-            metadata=assistant_message["metadata"]
+            role='assistant',
+            content=response,
+            created_at=response_ts,
+            metadata={}
         )
     )
 

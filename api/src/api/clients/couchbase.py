@@ -1,6 +1,7 @@
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
+import time
 from couchbase.cluster import Cluster
 from couchbase.options import ClusterOptions, QueryOptions
 from couchbase.auth import PasswordAuthenticator
@@ -32,6 +33,7 @@ class CouchbaseChatClient:
         self.scope = None
         self.chats = None
         self.messages = None
+        self._is_query_service_ready = False
 
     def connect(self) -> None:
         """Establish connection to Couchbase database."""
@@ -64,13 +66,13 @@ class CouchbaseChatClient:
             for coll in [self.messages_coll, self.chats_coll]:
                 try:
                     collection_manager.create_collection(self.scope_name, coll)
-                    logger.info(f"Created collection: {self.chats_coll}")
+                    logger.info(f"Created collection: {coll}")
                 except Exception as e:
                     if "already exists" in str(e):
                         pass
                     else:
                         logger.warning(
-                            f"Error creating collection {self.chats_coll}: {str(e)}"
+                            f"Error creating collection {coll}: {str(e)}"
                         )
 
             self.chats = self.scope.collection(self.chats_coll)
@@ -80,6 +82,52 @@ class CouchbaseChatClient:
         except Exception as e:
             logger.error(f"Error initializing collections: {str(e)}")
             raise
+
+    def await_up(self, max_retries: int = 30, initial_delay: float = 1.0, max_delay: float = 10.0) -> None:
+        """
+        Wait until the Couchbase query service is available by running a simple query in a loop.
+
+        Args:
+            max_retries: Maximum number of retry attempts.
+            initial_delay: Initial delay between retries in seconds.
+            max_delay: Maximum delay between retries in seconds.
+        """
+        # If we already know the service is ready, skip the check
+        if self._is_query_service_ready:
+            return
+
+        if not self.cluster:
+            self.connect()
+
+        delay = initial_delay
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Try a simple query that doesn't depend on any collections
+                query = "SELECT 1"
+                result = self.cluster.query(query)
+                # Consume the result to ensure it completes
+                list(result)
+
+                # If we got here, the query service is ready
+                self._is_query_service_ready = True
+                logger.info("Couchbase query service is ready")
+                return
+            except Exception as e:
+                if "service_not_available" in str(e):
+                    logger.warning(
+                        f"Attempt {attempt}/{max_retries}: Couchbase query service not available yet. "
+                        f"Retrying in {delay:.1f} seconds..."
+                    )
+                    time.sleep(delay)
+                    # Exponential backoff with a cap
+                    delay = min(max_delay, delay * 1.5)
+                else:
+                    # If it's not a service unavailable error, something else is wrong
+                    logger.error(f"Error checking Couchbase query service: {str(e)}")
+                    raise
+
+        # If we've exhausted all retries
+        raise Exception(f"Couchbase query service not available after {max_retries} attempts")
 
     def create_chat(self, metadata: Dict[str, Any] = None) -> str:
         """
@@ -117,7 +165,7 @@ class CouchbaseChatClient:
         role: str,
         content: str,
         metadata: Dict[str, Any] = None
-    ) -> int:
+    ) -> Tuple[int, str]:
         """
         Add a message to an existing chat session.
 
@@ -131,19 +179,20 @@ class CouchbaseChatClient:
             The ID of the added message
         """
         if not self.messages:
-            self.init()
+            self.init(wait=True)
 
         try:
             chat = self.get_chat(chat_id)
+            now = datetime.utcnow()
             if not chat:
                 raise ValueError(f"Chat with ID {chat_id} not found")
 
             # Update chat's timestamp
-            chat["updated_at"] = datetime.utcnow().isoformat()
+            chat["updated_at"] = now.isoformat()
             self.chats.upsert(chat_id, chat)
 
             # NOTE: Message ID is just a timestamp, for sortability
-            message_id = int(datetime.utcnow().timestamp() * 1000)
+            message_id = int(now.timestamp() * 1000)
 
             message_key = f"{chat_id}:{message_id}"
             message_doc = {
@@ -151,14 +200,14 @@ class CouchbaseChatClient:
                 "chat_id": chat_id,
                 "role": role,
                 "content": content,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": now.isoformat(),
                 "metadata": metadata or {}
             }
 
             self.messages.upsert(message_key, message_doc)
 
             logger.info(f"Added message with ID {message_id} to chat {chat_id}")
-            return message_id
+            return message_id, now.isoformat()
         except Exception:
             logger.exception("Failed to add message.")
             raise
@@ -200,6 +249,9 @@ class CouchbaseChatClient:
         if not self.messages:
             self.init()
 
+        # Make sure the query service is available
+        self.await_up()
+
         try:
             query = f"""
             SELECT m.*
@@ -227,6 +279,9 @@ class CouchbaseChatClient:
         """
         if not self.chats or not self.messages:
             self.init()
+
+        # Make sure the query service is available
+        self.await_up()
 
         try:
             chat = self.get_chat(chat_id)

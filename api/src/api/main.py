@@ -24,10 +24,9 @@ async def lifespan(app: FastAPI):
     )
     try:
         app.state.db.connect()
-    except Exception as e:
-        logger.warning(
-            f"Coudn't connect to Couchbase - deferring until next request: {str(e)}"
-        )
+        logger.info("Connected to Couchbase database")
+    except Exception:
+        logger.warning("Couldn't connect to Couchbase - retrying on next request.")
     app.state.opper = Opper(api_key=conf.get_opper_api_key())
 
     yield
