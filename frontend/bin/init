@@ -5,4 +5,5 @@ set -o pipefail
 set -o nounset
 [[ "${TRACE:-}" == true ]] && set -o xtrace
 
-CI=true yarn install --no-progress
+# NOTE: react-scripts is unmaintained, so gives lots of deprecation warnings
+yarn install --no-progress 2>&1 | grep -v 'warning react-scripts'
