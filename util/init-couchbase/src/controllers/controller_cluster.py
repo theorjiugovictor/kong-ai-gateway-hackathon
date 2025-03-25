@@ -50,9 +50,8 @@ class ControllerCluster:
         for attempt in range(max_retries):
             try:
                 with urllib.request.urlopen(request, timeout=10*60) as response:
-                    response_body = response.read().decode()
-                    print(response_body)
-                    print(f"Cluster initialization successful.")
+                    response.read().decode()
+                    print("Cluster initialization successful.")
                 return
             except Exception as e:
                 if attempt == max_retries - 1:
@@ -62,7 +61,7 @@ class ControllerCluster:
                 if 'already initialized' in error_message or 'Unauthorized' in error_message:
                     print("Cluster already initialized.")
                     return
-                print(f"Waiting until cluster is started ... ")
+                print("Waiting until cluster is started ... ")
                 time.sleep(1)
         assert False
 
@@ -74,7 +73,7 @@ class ControllerCluster:
         cluster = Cluster(self.get_connection_string(), cluster_options)
         wait_options = WaitUntilReadyOptions(
                 service_types=[ServiceType.KeyValue,
-                               ServiceType.Query, 
+                               ServiceType.Query,
                                ServiceType.Management])
         cluster.wait_until_ready(timedelta(seconds=300), wait_options)
         return cluster
@@ -90,10 +89,10 @@ class ControllerCluster:
                     elif isinstance(e, AuthenticationException):
                         print('Authentication failed: Cluster might not be fully initialized.')
                     raise e
-                
+
                 if isinstance(e, RequestCanceledException):
                     print("Waiting for connection to cluster ...")
                 elif isinstance(e, AuthenticationException):
                     print("Waiting for cluster to initialize ...")
-                
+
                 time.sleep(retry_interval)

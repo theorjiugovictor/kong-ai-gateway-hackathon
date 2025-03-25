@@ -9,7 +9,7 @@ class ControllerBucket:
 
     def ensure_created(self, bucket_name, ram_quota_mb=100):
         bucket_manager = self.cluster.buckets()
-        
+
         try:
             bucket_manager.get_bucket(bucket_name)
             print(f"Bucket '{bucket_name}' already exists.")
