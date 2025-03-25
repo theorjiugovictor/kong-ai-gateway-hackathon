@@ -31,6 +31,9 @@ services:
     strip_path: false
     paths:
     - /api
+    - /docs
+    - /redoc
+    - /openapi.json
   plugins:
   - name: post-function
     config:
