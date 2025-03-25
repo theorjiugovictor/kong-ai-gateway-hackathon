@@ -35,27 +35,22 @@ class CouchbaseChatClient:
 
     def connect(self) -> None:
         """Establish connection to Couchbase database."""
+        auth = PasswordAuthenticator(self.username, self.password)
+        options = ClusterOptions(auth)
+
+        self.cluster = Cluster(self.url, options)
+
         try:
-            auth = PasswordAuthenticator(self.username, self.password)
-            options = ClusterOptions(auth)
-
-            self.cluster = Cluster(self.url, options)
-
+            self.bucket = self.cluster.bucket(self.bucket_name)
+            self.scope = self.bucket.scope(self.scope_name)
             try:
-                self.bucket = self.cluster.bucket(self.bucket_name)
-                self.scope = self.bucket.scope(self.scope_name)
-                try:
-                    self.init()
-                except Exception as col_err:
-                    logger.warning(f"Collections not ready yet: {str(col_err)}")
+                self.init()
+            except Exception as col_err:
+                logger.warning(f"Collections not ready yet: {str(col_err)}")
 
-                logger.info("Connected to Couchbase database with bucket")
-            except Exception as bucket_err:
-                logger.warning(f"Bucket not ready yet: {str(bucket_err)}")
-
-        except Exception as e:
-            logger.error(f"Failed to connect to database: {str(e)}")
-            raise
+            logger.info("Connected to Couchbase database with bucket")
+        except Exception as bucket_err:
+            logger.warning(f"Bucket not ready yet: {str(bucket_err)}")
 
     def init(self) -> None:
         """Create the collections if they don't exist."""
