@@ -72,7 +72,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ activeChatId, onSelectChat, o
           <ul className="menu p-2 gap-1">
             {chats.map(chat => (
               <li key={chat.id} className={`grid grid-cols-[1fr_min-content] items-center ${activeChatId === chat.id} ${activeChatId === chat.id ? 'bg-base-300 rounded-lg' : 'hover:bg-base-300 rounded-lg'}`}>
-                <div className="px-3 py-2 overflow-hidden whitespace-nowrap overflow-hidden text-allipsis" style={{ display: 'block' }}>
+                <div
+                  className="px-3 py-2 overflow-hidden whitespace-nowrap overflow-hidden text-allipsis cursor-pointer"
+                  style={{ display: 'block' }}
+                  onClick={() => onSelectChat(chat.id)}
+                >
                   <div className="font-medium">{chat.title}</div>
                   {chat.lastMessage && (
                     <div className="text-xs opacity-70 truncate">{chat.lastMessage}</div>
