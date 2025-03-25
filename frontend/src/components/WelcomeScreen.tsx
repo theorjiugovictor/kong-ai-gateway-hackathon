@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiClientRest } from '../rest/api_client_rest';
 import { createChatApi } from '../rest/modules/chat';
-import { addChatFromApi, setActiveChat, setPendingMessage } from '../services/chatStorage';
+import { addChatFromApi, setActiveChat } from '../services/chatStorage';
 
 interface WelcomeScreenProps {
   onChatCreated: (chatId: string) => void;
@@ -31,16 +31,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onChatCreated }) => {
       addChatFromApi(chat, message);
       setActiveChat(chat.id);
 
-      // Store the message in session storage before navigating
-      setPendingMessage(message);
-
-      // Navigate to the new chat (no need for query parameter now)
+      // Send the initial message and await the response
+      await chatApi.sendMessage(chat.id, message);
+      
+      // Now that the message has been sent and response received,
+      // navigate to the chat page
       navigate(`/chat/${chat.id}`);
       onChatCreated(chat.id);
-
-      // Send the initial message
-      chatApi.sendMessage(chat.id, message).catch(() => {
-      });
     } catch (error) {
       alert('Failed to create chat. Please try again.');
       setIsLoading(false);

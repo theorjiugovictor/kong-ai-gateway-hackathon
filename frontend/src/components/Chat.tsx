@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ApiClientRest } from '../rest/api_client_rest';
 import { createChatApi, Message, Source } from '../rest/modules/chat';
-import { updateChatLastMessage, getPendingMessage } from '../services/chatStorage';
+import { updateChatLastMessage } from '../services/chatStorage';
 
 interface ChatProps {
   chatId: string;
@@ -17,35 +17,8 @@ const Chat: React.FC<ChatProps> = ({ chatId, client }) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Check for initial message from session storage or URL
-  useEffect(() => {
-    if (!chatId) return;
-
-    // First check for message in session storage (from welcome screen)
-    let initialMessage = getPendingMessage();
-
-    // If not found, check URL (for backward compatibility)
-    if (!initialMessage) {
-      const queryParams = new URLSearchParams(window.location.search);
-      initialMessage = queryParams.get('message');
-
-      // Clear the URL parameter if found
-      if (initialMessage) {
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-      }
-    }
-
-    if (initialMessage) {
-      // Show this message immediately before loading chat history
-      setMessages([{ role: 'user', content: initialMessage }]);
-
-      // Also show a loading response immediately
-      setMessages(prev => [...prev, { role: 'bot', content: 'Thinking...', isLoading: true }]);
-
-      setIsLoading(true); // Show loading state while waiting for response
-    }
-  }, [chatId]);
+  // We don't need any URL or pending message checking anymore
+  // The WelcomeScreen component awaits the response before navigating here
 
   // Load chat history when chatId changes
   useEffect(() => {

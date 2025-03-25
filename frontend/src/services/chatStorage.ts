@@ -10,7 +10,6 @@ export interface StoredChatSession {
 
 const CHATS_STORAGE_KEY = 'customer_support_chats';
 const ACTIVE_CHAT_KEY = 'active_chat_id';
-const PENDING_MESSAGE_KEY = 'pending_message';
 
 // Get all chat sessions from session storage
 export const getStoredChats = (): StoredChatSession[] => {
@@ -125,14 +124,4 @@ export const getActiveChat = (): string | null => {
   return sessionStorage.getItem(ACTIVE_CHAT_KEY);
 };
 
-// Set a pending message for a chat that's being created
-export const setPendingMessage = (message: string): void => {
-  sessionStorage.setItem(PENDING_MESSAGE_KEY, message);
-};
-
-// Get and clear the pending message
-export const getPendingMessage = (): string | null => {
-  const message = sessionStorage.getItem(PENDING_MESSAGE_KEY);
-  sessionStorage.removeItem(PENDING_MESSAGE_KEY);
-  return message;
-};
+// Removed setPendingMessage and getPendingMessage functionality
