@@ -5,4 +5,4 @@ set -o pipefail
 set -o nounset
 [[ "${TRACE:-}" == true ]] && set -o xtrace
 
-yarn install
+CI=true yarn install --no-progress
