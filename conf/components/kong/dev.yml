@@ -40,7 +40,6 @@ services:
       header_filter:
         - |
           local status = kong.service.response.get_status()
-          kong.log.err("STATUS:", kong.service.response.get_status())
           if status == nil or status == 502 or status == 503 then
             local status_messages = {
                 [502] = "the API server is starting",

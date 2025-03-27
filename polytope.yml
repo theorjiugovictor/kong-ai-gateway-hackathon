@@ -18,6 +18,7 @@ modules:
         - { id: kong, ports: [{ port: 3000, protocol: http }]}
       env:
         - { name: KONG_LOG_LEVEL, value: warn }
+        - { name: KONG_PROXY_ACCESS_LOG, value: /dev/null }
 
   - id: api
     module: polytope/python
