@@ -4,4 +4,4 @@
 
 trap 'jobs -p | xargs -r kill' EXIT
 
-exec uv run api
+exec uv --no-progress run --active api
