@@ -48,3 +48,4 @@ services:
             message = status_messages[status] or ("status code " .. (status or 'unknown'))
             kong.response.exit(503, '{"message": "Waiting for the API server to start - ' .. message .. '..."}', {["Content-Type"] = "application/json"})
           end
+

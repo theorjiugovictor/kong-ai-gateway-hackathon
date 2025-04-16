@@ -6,19 +6,57 @@ templates:
   - init-couchbase
   - kong
   - frontend
+  - polytope/redis
 
 modules:
   - id: kong
-    module: polytope/kong!simple
+    module: polytope/container
     args:
-      port: 3000
-      config-file: { type: host, path: ./conf/components/kong/dev.yml }
-      autoreload: true
+      image: kong/kong-gateway:3.10
       services:
-        - { id: kong, ports: [{ port: 3000, protocol: http }]}
+        - { id: kong, ports: [{ port: 8000, protocol: http }, { port: 8443, protocol: https }] }
+      mounts:
+        - { path: /kong.yml, source: { type: host, path: ./conf/components/kong/dev.yml } }
       env:
         - { name: KONG_LOG_LEVEL, value: warn }
         - { name: KONG_PROXY_ACCESS_LOG, value: /dev/null }
+        - { name: KONG_ROLE, value: data_plane }
+        - { name: KONG_PLUGINS, value: "bundled,ai-proxy-advanced" }
+        - { name: KONG_DECLARATIVE_CONFIG, value: /kong.yml }
+        - { name: KONG_DATABASE, value: off }
+        - { name: KONG_VITALS, value: off }
+        - { name: KONG_CLUSTER_MTLS, value: pki }
+        - { name: KONG_CLUSTER_CONTROL_PLANE, value: a6b7f53c23.us.cp0.konghq.com:443 }
+        - { name: KONG_CLUSTER_SERVER_NAME, value: a6b7f53c23.us.cp0.konghq.com }
+        - { name: KONG_CLUSTER_TELEMETRY_ENDPOINT, value: a6b7f53c23.us.tp0.konghq.com:443 }
+        - { name: KONG_CLUSTER_TELEMETRY_SERVER_NAME, value: a6b7f53c23.us.tp0.konghq.com }
+        - name: KONG_CLUSTER_CERT
+          value: |-
+            -----BEGIN CERTIFICATE-----
+            MIIxxx
+            xxx
+            xxx
+            xxx
+            xxx
+            xxx
+            xxx
+            xxx
+            xxx
+            xxx
+            xxx
+            xxx
+            -----END CERTIFICATE-----
+        - name: KONG_CLUSTER_CERT_KEY
+          value: |-
+            -----BEGIN PRIVATE KEY-----
+            MIGxxx
+            xxx
+            xxx
+            xxx
+            -----END PRIVATE KEY-----
+        - { name: KONG_LUA_SSL_TRUSTED_CERTIFICATE, value: system }
+        - { name: KONG_KONNECT_MODE, value: on }
+        - { name: KONG_CLUSTER_DP_LABELS, value: "created-by:quickstart,type:docker-macOsArmOS" }
 
   - id: api
     module: polytope/python
