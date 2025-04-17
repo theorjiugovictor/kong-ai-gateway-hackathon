@@ -33,23 +33,23 @@ modules:
         - name: KONG_CLUSTER_CERT
           value: |-
             -----BEGIN CERTIFICATE-----
-            MIIxxx
-            xxx
-            xxx
-            xxx
-            xxx
-            xxx
-            xxx
-            xxx
-            xxx
-            xxx
-            xxx
-            xxx
+            MII
+            xxx           
+            xxx           
+            xxx           
+            xxx           
+            xxx           
+            xxx           
+            xxx           
+            xxx           
+            xxx           
+            xxx           
+            xxx           
             -----END CERTIFICATE-----
         - name: KONG_CLUSTER_CERT_KEY
           value: |-
             -----BEGIN PRIVATE KEY-----
-            MIGxxx
+            MIG
             xxx
             xxx
             xxx
@@ -96,8 +96,8 @@ modules:
       cmd: ./bin/run
       env:
         - { name: PORT, value: 3002 }
-        - { name: REACT_APP_API_BASE_URL, value: "http://localhost:3000" }
-        - { name: PUBLIC_URL, value: "http://localhost:3000" }
+        - { name: REACT_APP_API_BASE_URL, value: "http://localhost:8000" }
+        - { name: PUBLIC_URL, value: "http://localhost:8000" }
       restart:
         policy: always
       services:
